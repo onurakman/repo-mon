@@ -54,7 +54,8 @@ jobs:
           if [ "$RUNNER_OS" == "Linux" ]; then
             tar -czf repo-mon-linux-amd64.tar.gz -C build/bin .
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            7z a repo-mon-windows-amd64.zip ./build/bin/*
+            mv build/bin/repo-mon build/bin/repo-mon.exe
+            7z a repo-mon-windows-amd64.zip ./build/bin/repo-mon.exe
           elif [ "$RUNNER_OS" == "macOS" ]; then
             cd build/bin && zip -ry ../../repo-mon-macos-universal.zip .
           fi
