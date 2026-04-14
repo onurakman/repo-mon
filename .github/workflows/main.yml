@@ -47,20 +47,17 @@ jobs:
           node-version: '22'
           go-version: '1.23'
 
-      - name: Archive build (Linux)
-        if: runner.os == 'Linux'
-        run: tar -czf repo-mon-linux-amd64.tar.gz -C build/bin repo-mon
-
-      - name: Archive build (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Archive build
+        shell: bash
         run: |
-          Get-ChildItem -Path build/bin -Recurse
-          Compress-Archive -Path build/bin/repo-mon.exe -DestinationPath repo-mon-windows-amd64.zip
-
-      - name: Archive build (macOS)
-        if: runner.os == 'macOS'
-        run: ditto -c -k --keepParent build/bin/repo-mon.app repo-mon-macos-universal.zip
+          ls -la build/bin/
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            tar -czf repo-mon-linux-amd64.tar.gz -C build/bin .
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            7z a repo-mon-windows-amd64.zip ./build/bin/*
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            cd build/bin && zip -ry ../../repo-mon-macos-universal.zip .
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
