@@ -8,8 +8,8 @@
     }"
   >
     <!-- App title -->
-    <div class="flex items-center gap-2.5 pl-4">
-      <i class="pi pi-github text-sm" :style="{ color: 'var(--color-primary)' }" />
+    <div class="flex items-center gap-2.5 pl-3">
+      <img src="../assets/images/logo.png" alt="Repo Monitor" class="w-9 h-9" />
       <span class="text-sm font-semibold tracking-wide" :style="{ color: 'var(--color-text-secondary)' }">
         Repo Monitor
       </span>
