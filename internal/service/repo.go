@@ -31,7 +31,9 @@ func RemoveRepository(id uint) error {
 	if err := database.DB.First(&repo, id).Error; err != nil {
 		return err
 	}
-	database.DB.Model(&repo).Association("Tags").Clear()
+	if err := database.DB.Model(&repo).Association("Tags").Clear(); err != nil {
+		return err
+	}
 	return database.DB.Delete(&models.Repository{}, id).Error
 }
 

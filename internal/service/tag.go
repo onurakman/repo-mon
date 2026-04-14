@@ -19,7 +19,9 @@ func RemoveTag(id uint) error {
 	if err := database.DB.First(&tag, id).Error; err != nil {
 		return err
 	}
-	database.DB.Model(&tag).Association("Repositories").Clear()
+	if err := database.DB.Model(&tag).Association("Repositories").Clear(); err != nil {
+		return err
+	}
 	return database.DB.Delete(&models.Tag{}, id).Error
 }
 

@@ -33,7 +33,10 @@ func (a *App) startup(ctx context.Context) {
 		configDir = "."
 	}
 	dbDir := filepath.Join(configDir, "repo-mon")
-	os.MkdirAll(dbDir, 0755)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		fmt.Println("Failed to create config dir:", err)
+		return
+	}
 	dbPath := filepath.Join(dbDir, "repo-mon.db")
 
 	if err := database.Initialize(dbPath); err != nil {
