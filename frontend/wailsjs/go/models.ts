@@ -57,6 +57,7 @@ export namespace models {
 	    path: string;
 	    pollInterval: number;
 	    sortOrder: number;
+	    lastStatus: string;
 	    tags: Tag[];
 	
 	    static createFrom(source: any = {}) {
@@ -73,6 +74,7 @@ export namespace models {
 	        this.path = source["path"];
 	        this.pollInterval = source["pollInterval"];
 	        this.sortOrder = source["sortOrder"];
+	        this.lastStatus = source["lastStatus"];
 	        this.tags = this.convertValues(source["tags"], Tag);
 	    }
 	
@@ -107,6 +109,11 @@ export namespace models {
 	    darkMode: boolean;
 	    viewMode: string;
 	    globalPollInterval: number;
+	    windowWidth: number;
+	    windowHeight: number;
+	    windowX: number;
+	    windowY: number;
+	    windowMaximised: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UserSettings(source);
@@ -122,6 +129,11 @@ export namespace models {
 	        this.darkMode = source["darkMode"];
 	        this.viewMode = source["viewMode"];
 	        this.globalPollInterval = source["globalPollInterval"];
+	        this.windowWidth = source["windowWidth"];
+	        this.windowHeight = source["windowHeight"];
+	        this.windowX = source["windowX"];
+	        this.windowY = source["windowY"];
+	        this.windowMaximised = source["windowMaximised"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

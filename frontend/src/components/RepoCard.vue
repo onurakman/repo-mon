@@ -1,6 +1,6 @@
 <template>
   <div
-    class="rounded-lg p-4 transition-all duration-300 relative"
+    class="rounded-lg p-4 relative overflow-hidden transition-all duration-300"
     :style="{
       backgroundColor: 'var(--color-surface)',
       borderTop: '3px solid ' + borderColor,
@@ -8,6 +8,12 @@
       outlineOffset: '-2px',
     }"
   >
+    <!-- Shine overlay while checking -->
+    <div
+      v-if="checking"
+      class="absolute inset-0 pointer-events-none card-shine rounded-lg"
+    />
+
     <!-- Select checkbox -->
     <div
       v-if="selectable"
@@ -32,7 +38,7 @@
         <div class="flex items-center gap-1.5 mt-1">
           <Icon icon="codicon:git-branch" width="14" height="14" :style="{ color: 'var(--color-primary)' }" />
           <span class="text-xs" :style="{ color: 'var(--color-text-secondary)' }">
-            {{ status?.currentBranch ?? '...' }}
+            {{ status?.currentBranch ?? repo.name }}
           </span>
         </div>
       </div>
@@ -49,14 +55,12 @@
         <button
           class="p-1.5 rounded cursor-pointer hover:opacity-80"
           :style="{ color: 'var(--color-text-secondary)' }"
-          @click="refresh"
+          @click="$emit('refresh')"
           title="Refresh"
         >
           <Icon
             icon="codicon:refresh"
             width="16" height="16"
-            class="transition-transform"
-            :class="{ 'refresh-spinning': refreshing }"
           />
         </button>
       </div>
@@ -88,9 +92,6 @@
         <StatusBadge v-if="status.checkingRemote" type="checking" />
         <StatusBadge v-else-if="!status.remoteAccessible && status.remotes?.length > 0" type="unreachable" />
       </template>
-      <span v-else class="text-xs" :style="{ color: 'var(--color-text-secondary)' }">
-        <Icon icon="codicon:loading" width="14" height="14" class="inline-block animate-spin" /> Loading...
-      </span>
     </div>
 
     <!-- Footer: last checked -->
@@ -113,13 +114,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import StatusBadge from './StatusBadge.vue'
-import ConfirmDialog from './ConfirmDialog.vue'
 import TagDropdown from './TagDropdown.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import type { Repository, RepoStatus } from '../stores/repoStore'
 import { useTimeAgo } from '@vueuse/core'
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
 const props = defineProps<{
   repo: Repository
@@ -130,14 +132,22 @@ const props = defineProps<{
 
 const emit = defineEmits<{ refresh: []; remove: []; 'toggle-select': [] }>()
 
-const refreshing = ref(false)
 const showRemoveConfirm = ref(false)
+const checking = ref(false)
 
-function refresh() {
-  refreshing.value = true
-  emit('refresh')
-  setTimeout(() => { refreshing.value = false }, 600)
-}
+onMounted(() => {
+  EventsOn('repo:checking', (id: number) => {
+    if (id === props.repo.ID) checking.value = true
+  })
+  EventsOn('repo:checked', (id: number) => {
+    if (id === props.repo.ID) checking.value = false
+  })
+})
+
+onUnmounted(() => {
+  EventsOff('repo:checking')
+  EventsOff('repo:checked')
+})
 
 const tagIds = computed(() => props.repo.tags?.map(t => t.ID) ?? [])
 
@@ -160,7 +170,7 @@ const borderColor = computed(() => {
 })
 
 const lastCheckedText = computed(() => {
-  if (!props.status?.lastChecked) return 'Not checked yet'
+  if (!props.status?.lastChecked) return 'Waiting for check...'
   return useTimeAgo(new Date(props.status.lastChecked)).value
 })
 </script>

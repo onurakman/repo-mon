@@ -3,13 +3,50 @@ package git
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const remoteTimeout = 10 * time.Second
+
+// ScanForRepos finds all git repositories under a directory (max 3 levels deep).
+func ScanForRepos(root string) []string {
+	var repos []string
+	maxDepth := baseDepth(root) + 3
+
+	filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return filepath.SkipDir
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		// Skip hidden dirs (except .git check)
+		if d.Name()[0] == '.' && d.Name() != "." {
+			return filepath.SkipDir
+		}
+		// Limit depth
+		if baseDepth(path) > maxDepth {
+			return filepath.SkipDir
+		}
+		// Check if this dir is a git repo
+		gitDir := filepath.Join(path, ".git")
+		if info, err := os.Stat(gitDir); err == nil && info.IsDir() {
+			repos = append(repos, path)
+			return filepath.SkipDir // Don't descend into git repos
+		}
+		return nil
+	})
+	return repos
+}
+
+func baseDepth(path string) int {
+	return strings.Count(filepath.Clean(path), string(os.PathSeparator))
+}
 
 func run(repoPath string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)

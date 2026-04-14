@@ -20,5 +20,10 @@ func UpdateSettings(settings models.UserSettings) error {
 		"dark_mode":            settings.DarkMode,
 		"view_mode":            settings.ViewMode,
 		"global_poll_interval": settings.GlobalPollInterval,
+		"window_width":         settings.WindowWidth,
+		"window_height":        settings.WindowHeight,
+		"window_x":             settings.WindowX,
+		"window_y":             settings.WindowY,
+		"window_maximised":     settings.WindowMaximised,
 	}).Error
 }

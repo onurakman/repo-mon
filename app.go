@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
-	"repo-mon/internal/database"
+	"repo-mon/internal/git"
 	"repo-mon/internal/models"
 	"repo-mon/internal/monitor"
 	"repo-mon/internal/service"
@@ -20,36 +19,60 @@ type App struct {
 }
 
 func NewApp() *App {
+	saver := func(repoID uint, statusJSON string) {
+		_ = service.SaveLastStatus(repoID, statusJSON)
+	}
 	return &App{
-		scheduler: monitor.NewScheduler(),
+		scheduler: monitor.NewScheduler(saver, nil),
 	}
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = "."
-	}
-	dbDir := filepath.Join(configDir, "repo-mon")
-	if err := os.MkdirAll(dbDir, 0755); err != nil {
-		fmt.Println("Failed to create config dir:", err)
-		return
-	}
-	dbPath := filepath.Join(dbDir, "repo-mon.db")
+	// Set event emitter now that we have ctx
+	a.scheduler.SetEventEmitter(func(event string, repoID uint) {
+		runtime.EventsEmit(ctx, event, repoID)
+	})
 
-	if err := database.Initialize(dbPath); err != nil {
-		fmt.Println("Database init error:", err)
-		return
+	// DB already initialized in main()
+	// Restore window position
+	settings, _ := service.GetSettings()
+	if settings != nil {
+		if settings.WindowMaximised {
+			runtime.WindowMaximise(ctx)
+		} else {
+			if settings.WindowX >= 0 && settings.WindowY >= 0 {
+				runtime.WindowSetPosition(ctx, settings.WindowX, settings.WindowY)
+			}
+		}
 	}
 
 	repos, err := service.GetRepositories()
 	if err == nil {
 		for _, repo := range repos {
+			a.scheduler.LoadCachedStatus(repo.ID, repo.LastStatus)
 			a.scheduler.Start(repo.ID, repo.Path, repo.PollInterval)
 		}
 	}
+}
+
+func (a *App) beforeClose(ctx context.Context) (prevent bool) {
+	w, h := runtime.WindowGetSize(ctx)
+	x, y := runtime.WindowGetPosition(ctx)
+	isMax := runtime.WindowIsMaximised(ctx)
+	settings, _ := service.GetSettings()
+	if settings != nil {
+		settings.WindowMaximised = isMax
+		if !isMax {
+			settings.WindowWidth = w
+			settings.WindowHeight = h
+			settings.WindowX = x
+			settings.WindowY = y
+		}
+		_ = service.UpdateSettings(*settings)
+	}
+	return false
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -76,6 +99,28 @@ func (a *App) SelectDirectory() (string, error) {
 	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Git Repository",
 	})
+}
+
+func (a *App) ScanForRepos(path string) []string {
+	return git.ScanForRepos(path)
+}
+
+func (a *App) AddRepositories(paths []string) (int, error) {
+	settings, _ := service.GetSettings()
+	interval := 30
+	if settings != nil {
+		interval = settings.GlobalPollInterval
+	}
+	added := 0
+	for _, path := range paths {
+		repo, err := service.AddRepository(filepath.Base(path), path, interval)
+		if err != nil {
+			continue
+		}
+		a.scheduler.Start(repo.ID, repo.Path, repo.PollInterval)
+		added++
+	}
+	return added, nil
 }
 
 func (a *App) AddRepository(path string) (*models.Repository, error) {
@@ -157,12 +202,17 @@ func (a *App) UpdatePollInterval(id uint, seconds int) error {
 }
 
 func (a *App) SetGlobalPollInterval(seconds int) error {
-	settings, err := service.GetSettings()
+	// Only update repo intervals and restart schedulers
+	// Settings save is handled by frontend via UpdateSettings
+	repos, err := service.GetRepositories()
 	if err != nil {
 		return err
 	}
-	settings.GlobalPollInterval = seconds
-	return service.UpdateSettings(*settings)
+	for _, repo := range repos {
+		_ = service.UpdatePollInterval(repo.ID, seconds)
+		a.scheduler.UpdateInterval(repo.ID, repo.Path, seconds)
+	}
+	return nil
 }
 
 // --- Tags ---

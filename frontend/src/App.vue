@@ -36,11 +36,15 @@ const repoStore = useRepoStore()
 const tagStore = useTagStore()
 const showAddRepo = ref(false)
 
-usePolling(5000)
-
 onMounted(async () => {
-  await settingsStore.fetchSettings()
-  await repoStore.fetchRepositories()
-  await tagStore.fetchTags()
+  settingsStore.init()
+  await Promise.all([
+    repoStore.fetchRepositories(),
+    tagStore.fetchTags(),
+  ])
+  // Fetch cached statuses immediately after repos load
+  await repoStore.fetchStatuses()
+  // Then start polling for live updates
+  usePolling(5000)
 })
 </script>

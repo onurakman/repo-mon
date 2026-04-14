@@ -8,5 +8,6 @@ type Repository struct {
 	Path         string `json:"path" gorm:"uniqueIndex"`
 	PollInterval int    `json:"pollInterval" gorm:"default:30"`
 	SortOrder    int    `json:"sortOrder" gorm:"default:0"`
+	LastStatus   string `json:"lastStatus" gorm:"type:text"`
 	Tags         []Tag  `json:"tags" gorm:"many2many:repository_tags;"`
 }

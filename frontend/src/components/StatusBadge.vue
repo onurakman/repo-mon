@@ -29,7 +29,7 @@ const config = computed(() => {
     ahead:       { bg: 'var(--color-info)',    icon: 'codicon:cloud-upload',          text: `${props.count ?? 0}`, tip: `${props.count ?? 0} commits ahead (unpushed)` },
     behind:      { bg: 'var(--color-warning)', icon: 'codicon:cloud-download',        text: `${props.count ?? 0}`, tip: `${props.count ?? 0} commits behind (unpulled)` },
     stash:       { bg: 'var(--color-muted)',   icon: 'codicon:archive',               text: `${props.count ?? 0}`, tip: `${props.count ?? 0} stash entries` },
-    unreachable: { bg: 'var(--color-warning)', icon: 'codicon:debug-disconnect',      text: '',                    tip: 'Remote unreachable' },
+    unreachable: { bg: 'var(--color-danger)',  icon: 'codicon:debug-disconnect',      text: '',                    tip: 'Remote unreachable' },
     checking:    { bg: 'var(--color-muted)',   icon: 'codicon:loading~spin',          text: '',                    tip: 'Checking remote...' },
   }
   return map[props.type] ?? map.clean

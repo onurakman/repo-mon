@@ -1,40 +1,22 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { GetSettings, UpdateSettings } from '../../wailsjs/go/main/App'
-import { models } from '../../wailsjs/go/models'
-
-export type UserSettings = models.UserSettings
+import { computed } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
+import { SetGlobalPollInterval } from '../../wailsjs/go/main/App'
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = ref<UserSettings>(new models.UserSettings({
-    ID: 1,
-    theme: 'neutral-carbon',
-    darkMode: true,
-    viewMode: 'grid',
-    globalPollInterval: 30,
+  const theme = useLocalStorage('repo-mon-theme', 'neutral-carbon')
+  const darkMode = useLocalStorage('repo-mon-dark-mode', true)
+  const viewMode = useLocalStorage('repo-mon-view-mode', 'grid')
+  const globalPollInterval = useLocalStorage('repo-mon-poll-interval', 30)
+  const pollingEnabled = useLocalStorage('repo-mon-polling-enabled', true)
+
+  const settings = computed(() => ({
+    theme: theme.value,
+    darkMode: darkMode.value,
+    viewMode: viewMode.value,
+    globalPollInterval: globalPollInterval.value,
+    pollingEnabled: pollingEnabled.value,
   }))
-
-  async function fetchSettings() {
-    try {
-      const s = await GetSettings()
-      if (s) {
-        settings.value = s
-      }
-    } catch (e) {
-      console.error('Failed to fetch settings:', e)
-    }
-    applyTheme()
-  }
-
-  async function updateSettings(partial: Partial<{ theme: string; darkMode: boolean; viewMode: string; globalPollInterval: number }>) {
-    Object.assign(settings.value, partial)
-    applyTheme()
-    try {
-      await UpdateSettings(settings.value)
-    } catch (e) {
-      console.error('Failed to save settings:', e)
-    }
-  }
 
   function applyTheme() {
     const root = document.documentElement
@@ -42,9 +24,25 @@ export const useSettingsStore = defineStore('settings', () => {
       'theme-neutral-carbon', 'theme-slate-blue', 'theme-deep-purple',
       'dark', 'light',
     )
-    root.classList.add(`theme-${settings.value.theme}`)
-    root.classList.add(settings.value.darkMode ? 'dark' : 'light')
+    root.classList.add(`theme-${theme.value}`)
+    root.classList.add(darkMode.value ? 'dark' : 'light')
   }
 
-  return { settings, fetchSettings, updateSettings }
+  async function updateSettings(partial: Partial<{ theme: string; darkMode: boolean; viewMode: string; globalPollInterval: number; pollingEnabled: boolean }>) {
+    if (partial.theme !== undefined) theme.value = partial.theme
+    if (partial.darkMode !== undefined) darkMode.value = partial.darkMode
+    if (partial.viewMode !== undefined) viewMode.value = partial.viewMode
+    if (partial.pollingEnabled !== undefined) pollingEnabled.value = partial.pollingEnabled
+    if (partial.globalPollInterval !== undefined) {
+      globalPollInterval.value = partial.globalPollInterval
+      await SetGlobalPollInterval(partial.globalPollInterval)
+    }
+    applyTheme()
+  }
+
+  function init() {
+    applyTheme()
+  }
+
+  return { settings, updateSettings, init }
 })

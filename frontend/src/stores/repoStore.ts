@@ -49,6 +49,8 @@ export const useRepoStore = defineStore('repo', () => {
     try {
       await AddRepository(path)
       await fetchRepositories()
+    } catch (e) {
+      throw e
     } finally {
       loading.value = false
     }

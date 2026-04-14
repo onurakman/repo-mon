@@ -64,3 +64,7 @@ func GetRepository(id uint) (*models.Repository, error) {
 func UpdatePollInterval(id uint, seconds int) error {
 	return database.DB.Model(&models.Repository{}).Where("id = ?", id).Update("poll_interval", seconds).Error
 }
+
+func SaveLastStatus(id uint, statusJSON string) error {
+	return database.DB.Model(&models.Repository{}).Where("id = ?", id).Update("last_status", statusJSON).Error
+}

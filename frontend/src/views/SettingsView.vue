@@ -49,7 +49,26 @@
         </button>
       </div>
 
-      <div>
+      <!-- Polling toggle -->
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-medium" :style="{ color: 'var(--color-text-secondary)' }">
+          Auto Polling
+        </label>
+        <button
+          class="w-12 h-6 rounded-full cursor-pointer transition-colors relative"
+          :style="{
+            backgroundColor: settings.pollingEnabled ? 'var(--color-primary)' : 'var(--color-border)',
+          }"
+          @click="settingsStore.updateSettings({ pollingEnabled: !settings.pollingEnabled })"
+        >
+          <div
+            class="w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all"
+            :style="{ left: settings.pollingEnabled ? '26px' : '2px' }"
+          />
+        </button>
+      </div>
+
+      <div v-if="settings.pollingEnabled">
         <label class="block text-sm font-medium mb-2" :style="{ color: 'var(--color-text-secondary)' }">
           Default Poll Interval: {{ settings.globalPollInterval }}s
         </label>
@@ -60,7 +79,7 @@
           :step="5"
           :value="settings.globalPollInterval"
           class="w-full"
-          @input="onIntervalChange"
+          @change="onIntervalChange"
         />
         <div class="flex justify-between text-xs" :style="{ color: 'var(--color-text-secondary)' }">
           <span>5s</span>

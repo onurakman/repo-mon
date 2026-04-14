@@ -3,6 +3,8 @@
 import {models} from '../models';
 import {monitor} from '../models';
 
+export function AddRepositories(arg1:Array<string>):Promise<number>;
+
 export function AddRepository(arg1:string):Promise<models.Repository>;
 
 export function AddTag(arg1:string,arg2:string):Promise<models.Tag>;
@@ -28,6 +30,8 @@ export function RefreshRepository(arg1:number):Promise<void>;
 export function RemoveRepository(arg1:number):Promise<void>;
 
 export function RemoveTag(arg1:number):Promise<void>;
+
+export function ScanForRepos(arg1:string):Promise<Array<string>>;
 
 export function SelectDirectory():Promise<string>;
 

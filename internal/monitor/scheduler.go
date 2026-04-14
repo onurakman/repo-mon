@@ -1,9 +1,16 @@
 package monitor
 
 import (
+	"encoding/json"
 	"sync"
 	"time"
 )
+
+// StatusSaver is called after each status update to persist to DB.
+type StatusSaver func(repoID uint, statusJSON string)
+
+// EventEmitter is called to notify frontend of status changes.
+type EventEmitter func(event string, repoID uint)
 
 type repoTicker struct {
 	ticker *time.Ticker
@@ -11,27 +18,75 @@ type repoTicker struct {
 }
 
 type Scheduler struct {
-	mu       sync.Mutex
-	tickers  map[uint]*repoTicker
-	statuses sync.Map
+	mu           sync.Mutex
+	tickers      map[uint]*repoTicker
+	statuses     sync.Map
+	statusSaver  StatusSaver
+	eventEmitter EventEmitter
 }
 
-func NewScheduler() *Scheduler {
+func NewScheduler(saver StatusSaver, emitter EventEmitter) *Scheduler {
 	return &Scheduler{
-		tickers: make(map[uint]*repoTicker),
+		tickers:      make(map[uint]*repoTicker),
+		statusSaver:  saver,
+		eventEmitter: emitter,
 	}
 }
 
+// LoadCachedStatus loads a previously persisted status into memory.
+func (s *Scheduler) LoadCachedStatus(repoID uint, statusJSON string) {
+	if statusJSON == "" {
+		return
+	}
+	var status RepoStatus
+	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
+		return
+	}
+	s.statuses.Store(repoID, &status)
+}
+
+func (s *Scheduler) persistStatus(repoID uint, status *RepoStatus) {
+	if s.statusSaver == nil {
+		return
+	}
+	data, err := json.Marshal(status)
+	if err != nil {
+		return
+	}
+	s.statusSaver(repoID, string(data))
+}
+
 // checkRepo runs local status immediately, stores it, then runs remote in background.
+func (s *Scheduler) SetEventEmitter(emitter EventEmitter) {
+	s.eventEmitter = emitter
+}
+
+func (s *Scheduler) emitEvent(event string, repoID uint) {
+	if s.eventEmitter != nil {
+		s.eventEmitter(event, repoID)
+	}
+}
+
 func (s *Scheduler) checkRepo(repoID uint, repoPath string) {
 	prev := s.GetStatus(repoID)
 	status := ComputeLocalStatus(repoID, repoPath, prev)
 	s.statuses.Store(repoID, status)
+	s.persistStatus(repoID, status)
+
+	// If local check already failed or no remotes, skip remote and emit done
+	if !status.CheckingRemote {
+		s.emitEvent("repo:checked", repoID)
+		return
+	}
+
+	s.emitEvent("repo:checking", repoID)
 
 	// Remote check in background
 	go func() {
 		ComputeRemoteStatus(status, repoPath)
 		s.statuses.Store(repoID, status)
+		s.persistStatus(repoID, status)
+		s.emitEvent("repo:checked", repoID)
 	}()
 }
 
