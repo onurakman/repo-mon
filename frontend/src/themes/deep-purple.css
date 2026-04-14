@@ -1,0 +1,23 @@
+:root.dark.theme-deep-purple,
+:root.theme-deep-purple.dark {
+  --color-bg: #13111c;
+  --color-surface: #1a1726;
+  --color-border: #2d2640;
+  --color-text: #e2e0f0;
+  --color-text-secondary: #9f9bb3;
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #7c3aed;
+  --color-sidebar: #0f0d17;
+}
+
+:root.light.theme-deep-purple,
+:root.theme-deep-purple.light {
+  --color-bg: #faf5ff;
+  --color-surface: #ffffff;
+  --color-border: #e9d5ff;
+  --color-text: #13111c;
+  --color-text-secondary: #6b21a8;
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #7c3aed;
+  --color-sidebar: #f3e8ff;
+}

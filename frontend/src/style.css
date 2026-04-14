@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@import "./themes/neutral-carbon.css";
+@import "./themes/slate-blue.css";
+@import "./themes/deep-purple.css";
+
+:root {
+  --color-success: #22c55e;
+  --color-warning: #f97316;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  --color-muted: #6b7280;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#app {
+  height: 100vh;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Page transitions */
+.page-enter-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.page-leave-active {
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Card list stagger animation */
+.card-list-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.card-list-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.card-list-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(8px);
+}
+.card-list-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+.card-list-move {
+  transition: transform 0.3s ease;
+}
+
+/* Modal transitions */
+.modal-enter-active {
+  transition: opacity 0.2s ease;
+}
+.modal-leave-active {
+  transition: opacity 0.15s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-panel-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-panel-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.modal-panel-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+.modal-panel-leave-to {
+  opacity: 0;
+  transform: scale(0.97) translateY(4px);
+}
+
+/* Refresh spin */
+@keyframes spin-once {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.refresh-spinning {
+  animation: spin-once 0.6s ease-in-out;
+}
+
+/* Pulse for checking remote */
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.badge-pulse {
+  animation: pulse-badge 1.2s ease-in-out infinite;
+}
+
+/* Status border glow on change */
+@keyframes border-flash {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.4); }
+  100% { filter: brightness(1); }
+}
+.border-flash {
+  animation: border-flash 0.5s ease;
+}
