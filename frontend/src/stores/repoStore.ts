@@ -8,8 +8,10 @@ import {
   RefreshRepository,
   RefreshAll,
   UpdatePollInterval,
+  UpdateSortOrder,
   AssignTag,
   UnassignTag,
+  AssignTagToRepos,
 } from '../../wailsjs/go/main/App'
 import { models } from '../../wailsjs/go/models'
 import { monitor } from '../../wailsjs/go/models'
@@ -21,6 +23,7 @@ export const useRepoStore = defineStore('repo', () => {
   const repositories = ref<Repository[]>([])
   const statuses = ref<Record<number, RepoStatus>>({})
   const loading = ref(false)
+  const selectedIds = ref<Set<number>>(new Set())
 
   async function fetchRepositories() {
     try {
@@ -53,6 +56,7 @@ export const useRepoStore = defineStore('repo', () => {
 
   async function removeRepo(id: number) {
     await RemoveRepository(id)
+    selectedIds.value.delete(id)
     await fetchRepositories()
   }
 
@@ -71,6 +75,11 @@ export const useRepoStore = defineStore('repo', () => {
     await fetchRepositories()
   }
 
+  async function updateSortOrder() {
+    const ids = repositories.value.map(r => r.ID)
+    await UpdateSortOrder(ids)
+  }
+
   async function assignTag(repoID: number, tagID: number) {
     await AssignTag(repoID, tagID)
     await fetchRepositories()
@@ -81,10 +90,32 @@ export const useRepoStore = defineStore('repo', () => {
     await fetchRepositories()
   }
 
+  async function assignTagToRepos(repoIDs: number[], tagID: number) {
+    await AssignTagToRepos(repoIDs, tagID)
+    await fetchRepositories()
+  }
+
+  function toggleSelect(id: number) {
+    if (selectedIds.value.has(id)) {
+      selectedIds.value.delete(id)
+    } else {
+      selectedIds.value.add(id)
+    }
+  }
+
+  function clearSelection() {
+    selectedIds.value = new Set()
+  }
+
+  function selectAll() {
+    selectedIds.value = new Set(repositories.value.map(r => r.ID))
+  }
+
   return {
     repositories,
     statuses,
     loading,
+    selectedIds,
     fetchRepositories,
     fetchStatuses,
     addRepo,
@@ -92,7 +123,12 @@ export const useRepoStore = defineStore('repo', () => {
     refreshRepo,
     refreshAll,
     updateInterval,
+    updateSortOrder,
     assignTag,
     unassignTag,
+    assignTagToRepos,
+    toggleSelect,
+    clearSelection,
+    selectAll,
   }
 })

@@ -1,34 +1,65 @@
 <template>
   <div
-    class="rounded-lg p-4 transition-all duration-300"
+    class="rounded-lg p-4 transition-all duration-300 relative"
     :style="{
       backgroundColor: 'var(--color-surface)',
       borderTop: '3px solid ' + borderColor,
+      outline: selected ? '2px solid var(--color-primary)' : 'none',
+      outlineOffset: '-2px',
     }"
   >
-    <!-- Header: name + refresh -->
+    <!-- Select checkbox -->
+    <div
+      v-if="selectable"
+      class="absolute top-2 left-2 cursor-pointer"
+      @click.stop="$emit('toggle-select')"
+    >
+      <div
+        class="w-4 h-4 rounded border flex items-center justify-center transition-colors"
+        :style="{
+          backgroundColor: selected ? 'var(--color-primary)' : 'transparent',
+          borderColor: selected ? 'var(--color-primary)' : 'var(--color-border)',
+        }"
+      >
+        <Icon v-if="selected" icon="codicon:check" width="10" height="10" style="color: #fff" />
+      </div>
+    </div>
+
+    <!-- Header: name + actions -->
     <div class="flex items-start justify-between mb-3">
-      <div class="min-w-0 flex-1">
+      <div class="min-w-0 flex-1" :class="{ 'pl-5': selectable }">
         <h3 class="font-bold text-sm truncate" :style="{ color: 'var(--color-text)' }">{{ repo.name }}</h3>
         <div class="flex items-center gap-1.5 mt-1">
-          <Icon icon="codicon:git-branch" class="text-xs" :style="{ color: 'var(--color-primary)' }" />
+          <Icon icon="codicon:git-branch" width="14" height="14" :style="{ color: 'var(--color-primary)' }" />
           <span class="text-xs" :style="{ color: 'var(--color-text-secondary)' }">
             {{ status?.currentBranch ?? '...' }}
           </span>
         </div>
       </div>
-      <button
-        class="p-1.5 rounded cursor-pointer hover:opacity-80 shrink-0"
-        :style="{ color: 'var(--color-text-secondary)' }"
-        @click="refresh"
-        title="Refresh"
-      >
-        <Icon
-          icon="codicon:refresh"
-          class="text-sm transition-transform"
-          :class="{ 'refresh-spinning': refreshing }"
-        />
-      </button>
+      <div class="flex items-center gap-0.5 shrink-0">
+        <TagDropdown :repo-id="repo.ID" :current-tag-ids="tagIds" />
+        <button
+          class="p-1.5 rounded cursor-pointer hover:opacity-80"
+          :style="{ color: 'var(--color-text-secondary)' }"
+          @click="showRemoveConfirm = true"
+          title="Remove repository"
+        >
+          <Icon icon="codicon:trash" width="14" height="14" />
+        </button>
+        <button
+          class="p-1.5 rounded cursor-pointer hover:opacity-80"
+          :style="{ color: 'var(--color-text-secondary)' }"
+          @click="refresh"
+          title="Refresh"
+        >
+          <Icon
+            icon="codicon:refresh"
+            width="16" height="16"
+            class="transition-transform"
+            :class="{ 'refresh-spinning': refreshing }"
+          />
+        </button>
+      </div>
     </div>
 
     <!-- Tags -->
@@ -58,17 +89,26 @@
         <StatusBadge v-else-if="!status.remoteAccessible && status.remotes?.length > 0" type="unreachable" />
       </template>
       <span v-else class="text-xs" :style="{ color: 'var(--color-text-secondary)' }">
-        <Icon icon="codicon:loading" class="text-[10px] inline-block animate-spin" /> Loading...
+        <Icon icon="codicon:loading" width="14" height="14" class="inline-block animate-spin" /> Loading...
       </span>
     </div>
 
     <!-- Footer: last checked -->
     <div class="flex items-center gap-1 mt-3">
-      <Icon icon="codicon:history" class="text-[10px]" :style="{ color: 'var(--color-text-secondary)' }" />
+      <Icon icon="codicon:history" width="12" height="12" :style="{ color: 'var(--color-text-secondary)' }" />
       <span class="text-[10px]" :style="{ color: 'var(--color-text-secondary)' }">
         {{ lastCheckedText }}
       </span>
     </div>
+
+    <ConfirmDialog
+      :visible="showRemoveConfirm"
+      title="Remove Repository"
+      :message="'Remove \'' + repo.name + '\' from monitoring? This won\'t delete the actual repository.'"
+      confirm-text="Remove"
+      @confirm="emit('remove'); showRemoveConfirm = false"
+      @cancel="showRemoveConfirm = false"
+    />
   </div>
 </template>
 
@@ -76,23 +116,30 @@
 import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import StatusBadge from './StatusBadge.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
+import TagDropdown from './TagDropdown.vue'
 import type { Repository, RepoStatus } from '../stores/repoStore'
 import { useTimeAgo } from '@vueuse/core'
 
 const props = defineProps<{
   repo: Repository
   status: RepoStatus | undefined
+  selectable?: boolean
+  selected?: boolean
 }>()
 
-const emit = defineEmits<{ refresh: [] }>()
+const emit = defineEmits<{ refresh: []; remove: []; 'toggle-select': [] }>()
 
 const refreshing = ref(false)
+const showRemoveConfirm = ref(false)
 
 function refresh() {
   refreshing.value = true
   emit('refresh')
   setTimeout(() => { refreshing.value = false }, 600)
 }
+
+const tagIds = computed(() => props.repo.tags?.map(t => t.ID) ?? [])
 
 const isClean = computed(() => {
   if (!props.status) return false

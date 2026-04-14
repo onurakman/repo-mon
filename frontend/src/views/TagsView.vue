@@ -47,7 +47,7 @@
         <button
           class="p-1 rounded cursor-pointer hover:opacity-80"
           :style="{ color: 'var(--color-danger)' }"
-          @click="tagStore.removeTag(tag.ID)"
+          @click="tagToDelete = tag; showDeleteConfirm = true"
           title="Delete tag"
         >
           <i class="pi pi-trash text-sm" />
@@ -62,20 +62,40 @@
         No tags yet. Create one above.
       </p>
     </div>
+
+    <ConfirmDialog
+      :visible="showDeleteConfirm"
+      title="Delete Tag"
+      :message="'Delete tag \'' + (tagToDelete?.name ?? '') + '\'? It will be removed from all repositories.'"
+      confirm-text="Delete"
+      @confirm="deleteTag"
+      @cancel="showDeleteConfirm = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useTagStore } from '../stores/tagStore'
+import { useTagStore, type Tag } from '../stores/tagStore'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const tagStore = useTagStore()
 const newTagName = ref('')
 const newTagColor = ref('#10b981')
+const showDeleteConfirm = ref(false)
+const tagToDelete = ref<Tag | null>(null)
 
 async function createTag() {
   if (!newTagName.value.trim()) return
   await tagStore.addTag(newTagName.value.trim(), newTagColor.value)
   newTagName.value = ''
+}
+
+async function deleteTag() {
+  if (tagToDelete.value) {
+    await tagStore.removeTag(tagToDelete.value.ID)
+  }
+  showDeleteConfirm.value = false
+  tagToDelete.value = null
 }
 </script>

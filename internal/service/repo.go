@@ -39,8 +39,17 @@ func RemoveRepository(id uint) error {
 
 func GetRepositories() ([]models.Repository, error) {
 	var repos []models.Repository
-	result := database.DB.Preload("Tags").Find(&repos)
+	result := database.DB.Preload("Tags").Order("sort_order asc, id asc").Find(&repos)
 	return repos, result.Error
+}
+
+func UpdateSortOrder(ids []uint) error {
+	for i, id := range ids {
+		if err := database.DB.Model(&models.Repository{}).Where("id = ?", id).Update("sort_order", i).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func GetRepository(id uint) (*models.Repository, error) {

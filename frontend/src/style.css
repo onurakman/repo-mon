@@ -23,6 +23,15 @@ html, body {
   -webkit-user-select: none;
 }
 
+/* Smooth SVG icon rendering */
+svg {
+  shape-rendering: geometricPrecision;
+}
+.iconify {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 /* Page transitions */
 .page-enter-active {
   transition: opacity 0.15s ease, transform 0.15s ease;

@@ -14,6 +14,10 @@ export function AssignTag(arg1, arg2) {
   return window['go']['main']['App']['AssignTag'](arg1, arg2);
 }
 
+export function AssignTagToRepos(arg1, arg2) {
+  return window['go']['main']['App']['AssignTagToRepos'](arg1, arg2);
+}
+
 export function GetAllStatuses() {
   return window['go']['main']['App']['GetAllStatuses']();
 }
@@ -68,6 +72,10 @@ export function UpdatePollInterval(arg1, arg2) {
 
 export function UpdateSettings(arg1) {
   return window['go']['main']['App']['UpdateSettings'](arg1);
+}
+
+export function UpdateSortOrder(arg1) {
+  return window['go']['main']['App']['UpdateSortOrder'](arg1);
 }
 
 export function WindowClose() {

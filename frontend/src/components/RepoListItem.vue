@@ -12,11 +12,11 @@
         <h3 class="font-bold text-sm truncate" :style="{ color: 'var(--color-text)' }">{{ repo.name }}</h3>
         <div class="flex items-center gap-3 mt-0.5">
           <span class="flex items-center gap-1">
-            <Icon icon="codicon:git-branch" class="text-[10px]" :style="{ color: 'var(--color-primary)' }" />
+            <Icon icon="codicon:git-branch" width="14" height="14" :style="{ color: 'var(--color-primary)' }" />
             <span class="text-xs" :style="{ color: 'var(--color-text-secondary)' }">{{ status?.currentBranch ?? '...' }}</span>
           </span>
           <span class="flex items-center gap-1">
-            <Icon icon="codicon:history" class="text-[10px]" :style="{ color: 'var(--color-text-secondary)' }" />
+            <Icon icon="codicon:history" width="12" height="12" :style="{ color: 'var(--color-text-secondary)' }" />
             <span class="text-[10px]" :style="{ color: 'var(--color-text-secondary)' }">{{ lastCheckedText }}</span>
           </span>
         </div>
@@ -55,7 +55,8 @@
       >
         <Icon
           icon="codicon:refresh"
-          class="text-sm transition-transform"
+          width="16" height="16"
+          class="transition-transform"
           :class="{ 'refresh-spinning': refreshing }"
         />
       </button>

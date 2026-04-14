@@ -138,6 +138,10 @@ func (a *App) RefreshAll() error {
 	return nil
 }
 
+func (a *App) UpdateSortOrder(ids []uint) error {
+	return service.UpdateSortOrder(ids)
+}
+
 // --- Polling ---
 
 func (a *App) UpdatePollInterval(id uint, seconds int) error {
@@ -181,6 +185,10 @@ func (a *App) AssignTag(repoID, tagID uint) error {
 
 func (a *App) UnassignTag(repoID, tagID uint) error {
 	return service.UnassignTag(repoID, tagID)
+}
+
+func (a *App) AssignTagToRepos(repoIDs []uint, tagID uint) error {
+	return service.AssignTagToRepos(repoIDs, tagID)
 }
 
 // --- Settings ---

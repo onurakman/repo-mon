@@ -9,6 +9,8 @@ export function AddTag(arg1:string,arg2:string):Promise<models.Tag>;
 
 export function AssignTag(arg1:number,arg2:number):Promise<void>;
 
+export function AssignTagToRepos(arg1:Array<number>,arg2:number):Promise<void>;
+
 export function GetAllStatuses():Promise<Record<number, monitor.RepoStatus>>;
 
 export function GetRepoStatus(arg1:number):Promise<monitor.RepoStatus>;
@@ -36,6 +38,8 @@ export function UnassignTag(arg1:number,arg2:number):Promise<void>;
 export function UpdatePollInterval(arg1:number,arg2:number):Promise<void>;
 
 export function UpdateSettings(arg1:models.UserSettings):Promise<void>;
+
+export function UpdateSortOrder(arg1:Array<number>):Promise<void>;
 
 export function WindowClose():Promise<void>;
 

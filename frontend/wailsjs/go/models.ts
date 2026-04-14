@@ -56,6 +56,7 @@ export namespace models {
 	    name: string;
 	    path: string;
 	    pollInterval: number;
+	    sortOrder: number;
 	    tags: Tag[];
 	
 	    static createFrom(source: any = {}) {
@@ -71,6 +72,7 @@ export namespace models {
 	        this.name = source["name"];
 	        this.path = source["path"];
 	        this.pollInterval = source["pollInterval"];
+	        this.sortOrder = source["sortOrder"];
 	        this.tags = this.convertValues(source["tags"], Tag);
 	    }
 	

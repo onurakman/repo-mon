@@ -43,6 +43,21 @@ func AssignTag(repoID, tagID uint) error {
 	return database.DB.Model(&repo).Association("Tags").Append(&tag)
 }
 
+func AssignTagToRepos(repoIDs []uint, tagID uint) error {
+	var tag models.Tag
+	if err := database.DB.First(&tag, tagID).Error; err != nil {
+		return err
+	}
+	for _, repoID := range repoIDs {
+		var repo models.Repository
+		if err := database.DB.First(&repo, repoID).Error; err != nil {
+			continue
+		}
+		_ = database.DB.Model(&repo).Association("Tags").Append(&tag)
+	}
+	return nil
+}
+
 func UnassignTag(repoID, tagID uint) error {
 	var repo models.Repository
 	if err := database.DB.First(&repo, repoID).Error; err != nil {

@@ -1,11 +1,11 @@
 <template>
   <span
-    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium transition-all duration-200"
+    class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all duration-200"
     :class="{ 'badge-pulse': type === 'checking' }"
     :style="{ backgroundColor: bgColor, color: '#fff' }"
     :title="tooltip"
   >
-    <Icon :icon="iconName" class="text-[11px]" />
+    <Icon :icon="iconName" width="14" height="14" />
     <span v-if="displayText">{{ displayText }}</span>
   </span>
 </template>
@@ -21,7 +21,7 @@ const props = defineProps<{
 
 const config = computed(() => {
   const map: Record<string, { bg: string; icon: string; text: string; tip: string }> = {
-    clean:       { bg: 'var(--color-success)', icon: 'codicon:pass-filled',          text: '',                    tip: 'Working tree clean' },
+    clean:       { bg: 'var(--color-success)', icon: 'codicon:check',                text: '',                    tip: 'Working tree clean' },
     modified:    { bg: 'var(--color-warning)', icon: 'codicon:diff-modified',         text: `${props.count ?? 0}`, tip: `${props.count ?? 0} modified files` },
     staged:      { bg: 'var(--color-info)',    icon: 'codicon:diff-added',            text: `${props.count ?? 0}`, tip: `${props.count ?? 0} staged files` },
     untracked:   { bg: 'var(--color-muted)',   icon: 'codicon:diff-ignored',          text: `${props.count ?? 0}`, tip: `${props.count ?? 0} untracked files` },
