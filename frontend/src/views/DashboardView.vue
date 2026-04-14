@@ -4,6 +4,35 @@
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-xl font-bold">Dashboard</h1>
       <div class="flex items-center gap-2">
+        <!-- Search -->
+        <div class="relative">
+          <Icon
+            icon="codicon:search"
+            width="14" height="14"
+            class="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none"
+            :style="{ color: 'var(--color-text-secondary)' }"
+          />
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search..."
+            class="h-7 w-44 pl-7 pr-7 rounded-md text-xs border outline-none transition-colors"
+            :style="{
+              borderColor: 'var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text)',
+            }"
+          />
+          <button
+            v-if="searchQuery"
+            class="absolute right-1.5 top-1/2 -translate-y-1/2 cursor-pointer rounded-sm hover:opacity-80"
+            :style="{ color: 'var(--color-text-secondary)' }"
+            @click="searchQuery = ''"
+            title="Clear search"
+          >
+            <Icon icon="codicon:close" width="14" height="14" />
+          </button>
+        </div>
         <button
           class="w-7 h-7 rounded-md text-xs cursor-pointer transition-colors border flex items-center justify-center"
           :style="{
@@ -195,6 +224,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { refDebounced } from '@vueuse/core'
 import { Icon } from '@iconify/vue'
 import draggable from 'vuedraggable'
 import { useRepoStore } from '../stores/repoStore'
@@ -212,6 +242,8 @@ const tagStore = useTagStore()
 const settingsStore = useSettingsStore()
 
 const viewMode = ref<'grid' | 'list'>(settingsStore.settings.viewMode as 'grid' | 'list')
+const searchQuery = ref('')
+const debouncedSearch = refDebounced(searchQuery, 250)
 const selectedTagIds = ref<number[]>([])
 const refreshingAll = ref(false)
 const selectMode = ref(false)
@@ -233,7 +265,7 @@ function onDragEnd() {
   repoStore.updateSortOrder()
 }
 
-const isFiltered = computed(() => selectedTagIds.value.length > 0)
+const isFiltered = computed(() => selectedTagIds.value.length > 0 || debouncedSearch.value.length > 0)
 
 async function bulkAssignTag(tagId: number) {
   const ids = Array.from(repoStore.selectedIds)
@@ -243,10 +275,19 @@ async function bulkAssignTag(tagId: number) {
 }
 
 const filteredRepos = computed(() => {
-  if (selectedTagIds.value.length === 0) return repoStore.repositories
-  return repoStore.repositories.filter((repo) =>
-    repo.tags?.some((tag) => selectedTagIds.value.includes(tag.ID))
-  )
+  let repos = repoStore.repositories
+  if (selectedTagIds.value.length > 0) {
+    repos = repos.filter((repo) =>
+      repo.tags?.some((tag) => selectedTagIds.value.includes(tag.ID))
+    )
+  }
+  const q = debouncedSearch.value.toLowerCase()
+  if (q) {
+    repos = repos.filter((repo) =>
+      repo.name.toLowerCase().includes(q) || repo.path.toLowerCase().includes(q)
+    )
+  }
+  return repos
 })
 
 function toggleTagFilter(tagId: number) {
