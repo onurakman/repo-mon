@@ -16,13 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - name: 'App'
+          - name: 'repo-mon'
             platform:  'linux/amd64'
             os: 'ubuntu-latest'
-          - name: 'App'
+          - name: 'repo-mon'
             platform:  'windows/amd64'
             os: 'windows-latest'
-          - name: 'App'
+          - name: 'repo-mon'
             platform:  'darwin/universal'
             os: 'macos-latest'
 
@@ -39,6 +39,6 @@ jobs:
         with:
           build-name: ${{ matrix.build.name }}
           build-platform: ${{ matrix.build.platform }}
-          package: false
+          sign: 'false'
           node-version: '22'
           go-version: '1.23'
