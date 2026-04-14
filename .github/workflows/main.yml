@@ -47,13 +47,24 @@ jobs:
           node-version: '22'
           go-version: '1.23'
 
+      - name: Archive build (Linux)
+        if: runner.os == 'Linux'
+        run: tar -czf repo-mon-linux-amd64.tar.gz -C build/bin repo-mon
+
+      - name: Archive build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path build\bin\repo-mon.exe -DestinationPath repo-mon-windows-amd64.zip
+
+      - name: Archive build (macOS)
+        if: runner.os == 'macOS'
+        run: ditto -c -k --keepParent build/bin/repo-mon.app repo-mon-macos-universal.zip
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: repo-mon-${{ runner.os }}
-          path: |
-            */bin/*
-            *\bin\*
+          path: repo-mon-*.*
 
   release:
     needs: build
@@ -68,4 +79,4 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: artifacts/*
