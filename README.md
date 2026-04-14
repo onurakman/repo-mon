@@ -6,7 +6,7 @@ Desktop application for monitoring local git repositories. Tracks uncommitted ch
 
 - **Backend:** Go, Wails v2, GORM + SQLite
 - **Frontend:** Vue 3, TypeScript, Tailwind CSS 4, PrimeVue 4, Pinia, VueUse
-- **Git:** Native git CLI via `os/exec`
+- **Git:** [go-git](https://github.com/go-git/go-git) (pure Go, no git CLI dependency)
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ repo-mon/
 ├── internal/
 │   ├── models/             # GORM models (Repository, Tag, UserSettings)
 │   ├── database/           # SQLite init + auto-migration
-│   ├── git/                # Git CLI wrapper + tests
+│   ├── git/                # Git operations via go-git + tests
 │   ├── monitor/            # Polling scheduler + status computation
 │   └── service/            # Business logic (CRUD)
 ├── frontend/

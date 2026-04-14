@@ -33,7 +33,7 @@ make test           # Run Go tests
 
 - **Monolith backend:** All logic in one Go process, Wails bindings expose to frontend
 - **Polling:** Each repo gets its own `time.Ticker` goroutine in `internal/monitor/scheduler.go`
-- **Git ops:** Native `git` CLI via `os/exec`, 10s timeout on remote operations (`internal/git/git.go`)
+- **Git ops:** Pure Go via `go-git/go-git/v5` (no git CLI dependency), 10s timeout on remote operations (`internal/git/git.go`)
 - **DB:** SQLite via GORM, auto-migrated at startup (`internal/database/database.go`)
 - **State:** `RepoStatus` is runtime-only (not persisted), stored in `sync.Map`
 
