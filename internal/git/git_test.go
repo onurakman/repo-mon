@@ -2,34 +2,39 @@ package git
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
+
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 func setupTestRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = dir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("setup %v failed: %s %v", args, out, err)
-		}
+	repo, err := gogit.PlainInit(dir, false)
+	if err != nil {
+		t.Fatalf("git init: %v", err)
 	}
 	f := filepath.Join(dir, "README.md")
 	os.WriteFile(f, []byte("# test"), 0644)
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = dir
-	cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "init")
-	cmd.Dir = dir
-	cmd.Run()
+	w, err := repo.Worktree()
+	if err != nil {
+		t.Fatalf("worktree: %v", err)
+	}
+	if _, err := w.Add("README.md"); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if _, err := w.Commit("init", &gogit.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test",
+			Email: "test@test.com",
+			When:  time.Now(),
+		},
+	}); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
 	return dir
 }
 
@@ -74,9 +79,9 @@ func TestStatusCounts(t *testing.T) {
 		t.Errorf("expected 1 untracked, got %d", untracked)
 	}
 
-	cmd := exec.Command("git", "add", "new.txt")
-	cmd.Dir = repo
-	cmd.Run()
+	r, _ := gogit.PlainOpen(repo)
+	wt, _ := r.Worktree()
+	wt.Add("new.txt")
 	mod, staged, untracked, err = StatusCounts(repo)
 	if err != nil {
 		t.Fatal(err)

@@ -1,14 +1,17 @@
 package git
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
+
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 const remoteTimeout = 10 * time.Second
@@ -48,48 +51,43 @@ func baseDepth(path string) int {
 	return strings.Count(filepath.Clean(path), string(os.PathSeparator))
 }
 
-func run(repoPath string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = repoPath
-	out, err := cmd.CombinedOutput()
-	return strings.TrimSpace(string(out)), err
-}
-
-func runWithTimeout(repoPath string, timeout time.Duration, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Dir = repoPath
-	out, err := cmd.CombinedOutput()
-	if ctx.Err() == context.DeadlineExceeded {
-		return "", fmt.Errorf("timeout after %s", timeout)
-	}
-	return strings.TrimSpace(string(out)), err
+func openRepo(repoPath string) (*gogit.Repository, error) {
+	return gogit.PlainOpen(repoPath)
 }
 
 func IsGitRepo(path string) bool {
-	_, err := run(path, "rev-parse", "--git-dir")
+	_, err := openRepo(path)
 	return err == nil
 }
 
 func CurrentBranch(repoPath string) (string, error) {
-	return run(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+	repo, err := openRepo(repoPath)
+	if err != nil {
+		return "", err
+	}
+	head, err := repo.Head()
+	if err != nil {
+		return "", err
+	}
+	return head.Name().Short(), nil
 }
 
 func StatusCounts(repoPath string) (modified, staged, untracked int, err error) {
-	out, err := run(repoPath, "status", "--porcelain")
+	repo, err := openRepo(repoPath)
 	if err != nil {
 		return 0, 0, 0, err
 	}
-	if out == "" {
-		return 0, 0, 0, nil
+	w, err := repo.Worktree()
+	if err != nil {
+		return 0, 0, 0, err
 	}
-	for _, line := range strings.Split(out, "\n") {
-		if len(line) < 2 {
-			continue
-		}
-		x := line[0]
-		y := line[1]
+	status, err := w.Status()
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	for _, s := range status {
+		x := byte(s.Staging)
+		y := byte(s.Worktree)
 		if x == '?' {
 			untracked++
 		} else {
@@ -105,16 +103,21 @@ func StatusCounts(repoPath string) (modified, staged, untracked int, err error) 
 }
 
 func HasConflicts(repoPath string) (bool, error) {
-	out, err := run(repoPath, "status", "--porcelain")
+	repo, err := openRepo(repoPath)
 	if err != nil {
 		return false, err
 	}
-	for _, line := range strings.Split(out, "\n") {
-		if len(line) < 2 {
-			continue
-		}
-		x := line[0]
-		y := line[1]
+	w, err := repo.Worktree()
+	if err != nil {
+		return false, err
+	}
+	status, err := w.Status()
+	if err != nil {
+		return false, err
+	}
+	for _, s := range status {
+		x := byte(s.Staging)
+		y := byte(s.Worktree)
 		if (x == 'U' || y == 'U') || (x == 'A' && y == 'A') || (x == 'D' && y == 'D') {
 			return true, nil
 		}
@@ -123,53 +126,136 @@ func HasConflicts(repoPath string) (bool, error) {
 }
 
 func StashCount(repoPath string) (int, error) {
-	out, err := run(repoPath, "stash", "list")
+	stashLog := filepath.Join(repoPath, ".git", "logs", "refs", "stash")
+	f, err := os.Open(stashLog)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
 		return 0, err
 	}
-	if out == "" {
-		return 0, nil
+	defer f.Close()
+
+	count := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if scanner.Text() != "" {
+			count++
+		}
 	}
-	return len(strings.Split(out, "\n")), nil
+	return count, scanner.Err()
 }
 
 func FetchRemote(repoPath string, remoteName string) error {
-	_, err := runWithTimeout(repoPath, remoteTimeout, "fetch", remoteName)
+	repo, err := openRepo(repoPath)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), remoteTimeout)
+	defer cancel()
+
+	err = repo.FetchContext(ctx, &gogit.FetchOptions{
+		RemoteName: remoteName,
+	})
+	if err == gogit.NoErrAlreadyUpToDate {
+		return nil
+	}
+	if ctx.Err() == context.DeadlineExceeded {
+		return fmt.Errorf("timeout after %s", remoteTimeout)
+	}
 	return err
 }
 
 func RemoteNames(repoPath string) ([]string, error) {
-	out, err := run(repoPath, "remote")
+	repo, err := openRepo(repoPath)
 	if err != nil {
 		return nil, err
 	}
-	if out == "" {
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return nil, err
+	}
+	if len(remotes) == 0 {
 		return nil, nil
 	}
-	return strings.Split(out, "\n"), nil
+	names := make([]string, len(remotes))
+	for i, r := range remotes {
+		names[i] = r.Config().Name
+	}
+	return names, nil
 }
 
 func RemoteURL(repoPath string, remoteName string) (string, error) {
-	return run(repoPath, "remote", "get-url", remoteName)
+	repo, err := openRepo(repoPath)
+	if err != nil {
+		return "", err
+	}
+	remote, err := repo.Remote(remoteName)
+	if err != nil {
+		return "", err
+	}
+	urls := remote.Config().URLs
+	if len(urls) == 0 {
+		return "", fmt.Errorf("no URLs for remote %s", remoteName)
+	}
+	return urls[0], nil
 }
 
 func AheadBehind(repoPath string, branch string, remote string) (ahead, behind int, err error) {
-	upstream := remote + "/" + branch
-	out, err := run(repoPath, "rev-list", "--left-right", "--count", branch+"..."+upstream)
+	repo, err := openRepo(repoPath)
 	if err != nil {
 		return 0, 0, err
 	}
-	parts := strings.Fields(out)
-	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("unexpected rev-list output: %s", out)
+
+	localRef, err := repo.Reference(plumbing.NewBranchReferenceName(branch), true)
+	if err != nil {
+		return 0, 0, fmt.Errorf("local branch %s: %w", branch, err)
 	}
-	ahead, err = strconv.Atoi(parts[0])
+
+	remoteRefName := plumbing.NewRemoteReferenceName(remote, branch)
+	remoteRef, err := repo.Reference(remoteRefName, true)
+	if err != nil {
+		return 0, 0, fmt.Errorf("remote ref %s/%s: %w", remote, branch, err)
+	}
+
+	localHash := localRef.Hash()
+	remoteHash := remoteRef.Hash()
+
+	if localHash == remoteHash {
+		return 0, 0, nil
+	}
+
+	// Collect commits reachable from each side
+	localSet := make(map[plumbing.Hash]struct{})
+	li, err := repo.Log(&gogit.LogOptions{From: localHash})
 	if err != nil {
 		return 0, 0, err
 	}
-	behind, err = strconv.Atoi(parts[1])
+	li.ForEach(func(c *object.Commit) error {
+		localSet[c.Hash] = struct{}{}
+		return nil
+	})
+
+	remoteSet := make(map[plumbing.Hash]struct{})
+	ri, err := repo.Log(&gogit.LogOptions{From: remoteHash})
 	if err != nil {
 		return 0, 0, err
 	}
+	ri.ForEach(func(c *object.Commit) error {
+		remoteSet[c.Hash] = struct{}{}
+		return nil
+	})
+
+	for h := range localSet {
+		if _, ok := remoteSet[h]; !ok {
+			ahead++
+		}
+	}
+	for h := range remoteSet {
+		if _, ok := localSet[h]; !ok {
+			behind++
+		}
+	}
+
 	return ahead, behind, nil
 }
