@@ -34,7 +34,7 @@ jobs:
           submodules: recursive
 
       - name: Build wails
-        uses: host-uk/build@v4
+        uses: dAppCore/build@v4
         id: build
         with:
           build-name: ${{ matrix.build.name }}
