@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
-import { SetGlobalPollInterval } from '../../wailsjs/go/main/App'
+import { SetGlobalPollInterval, SetPollingEnabled } from '../../wailsjs/go/main/App'
 
 export const useSettingsStore = defineStore('settings', () => {
   const theme = useLocalStorage('repo-mon-theme', 'neutral-carbon')
@@ -32,7 +32,10 @@ export const useSettingsStore = defineStore('settings', () => {
     if (partial.theme !== undefined) theme.value = partial.theme
     if (partial.darkMode !== undefined) darkMode.value = partial.darkMode
     if (partial.viewMode !== undefined) viewMode.value = partial.viewMode
-    if (partial.pollingEnabled !== undefined) pollingEnabled.value = partial.pollingEnabled
+    if (partial.pollingEnabled !== undefined) {
+      pollingEnabled.value = partial.pollingEnabled
+      await SetPollingEnabled(partial.pollingEnabled)
+    }
     if (partial.globalPollInterval !== undefined) {
       globalPollInterval.value = partial.globalPollInterval
       await SetGlobalPollInterval(partial.globalPollInterval)
@@ -42,6 +45,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function init() {
     applyTheme()
+    // Sync polling state to backend on startup
+    SetPollingEnabled(pollingEnabled.value)
   }
 
   return { settings, updateSettings, init }

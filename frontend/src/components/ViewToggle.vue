@@ -7,7 +7,7 @@
         color: modelValue === 'grid' ? '#fff' : 'var(--color-text-secondary)',
       }"
       @click="$emit('update:modelValue', 'grid')"
-      title="Grid view"
+      v-tooltip.bottom="'Grid view'"
     >
       <i class="pi pi-th-large text-xs" />
     </button>
@@ -18,7 +18,7 @@
         color: modelValue === 'list' ? '#fff' : 'var(--color-text-secondary)',
       }"
       @click="$emit('update:modelValue', 'list')"
-      title="List view"
+      v-tooltip.bottom="'List view'"
     >
       <i class="pi pi-list text-xs" />
     </button>

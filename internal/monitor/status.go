@@ -42,13 +42,24 @@ func ComputeLocalStatus(repoID uint, repoPath string, previousStatus *RepoStatus
 	if previousStatus != nil {
 		status.LastSuccessfulCheck = previousStatus.LastSuccessfulCheck
 		status.RemoteAccessible = previousStatus.RemoteAccessible
-		status.Remotes = previousStatus.Remotes
 		status.UnpushedCommits = previousStatus.UnpushedCommits
 		status.UnpulledCommits = previousStatus.UnpulledCommits
 		status.Error = previousStatus.Error
+		// Deep copy Remotes slice to avoid sharing with concurrent goroutines
+		if previousStatus.Remotes != nil {
+			status.Remotes = make([]RemoteInfo, len(previousStatus.Remotes))
+			copy(status.Remotes, previousStatus.Remotes)
+		}
 	}
 
-	branch, err := git.CurrentBranch(repoPath)
+	repo, err := git.OpenRepo(repoPath)
+	if err != nil {
+		status.Error = "not a git repository or git error: " + err.Error()
+		status.CheckingRemote = false
+		return status
+	}
+
+	branch, err := git.CurrentBranch(repo)
 	if err != nil {
 		status.Error = "not a git repository or git error: " + err.Error()
 		status.CheckingRemote = false
@@ -56,7 +67,7 @@ func ComputeLocalStatus(repoID uint, repoPath string, previousStatus *RepoStatus
 	}
 	status.CurrentBranch = branch
 
-	modified, staged, untracked, err := git.StatusCounts(repoPath)
+	modified, staged, untracked, hasConflicts, err := git.WorktreeStatus(repo, repoPath)
 	if err != nil {
 		status.Error = "status error: " + err.Error()
 		status.CheckingRemote = false
@@ -66,8 +77,6 @@ func ComputeLocalStatus(repoID uint, repoPath string, previousStatus *RepoStatus
 	status.StagedFiles = staged
 	status.UntrackedFiles = untracked
 	status.UncommittedChanges = modified + untracked + staged
-
-	hasConflicts, _ := git.HasConflicts(repoPath)
 	status.HasConflicts = hasConflicts
 
 	stashCount, _ := git.StashCount(repoPath)
@@ -81,7 +90,14 @@ func ComputeLocalStatus(repoID uint, repoPath string, previousStatus *RepoStatus
 func ComputeRemoteStatus(status *RepoStatus, repoPath string) {
 	status.CheckingRemote = false
 
-	remoteNames, err := git.RemoteNames(repoPath)
+	repo, err := git.OpenRepo(repoPath)
+	if err != nil {
+		status.RemoteAccessible = false
+		status.Remotes = nil
+		return
+	}
+
+	remoteNames, err := git.RemoteNames(repo)
 	if err != nil || len(remoteNames) == 0 {
 		status.RemoteAccessible = false
 		status.Remotes = nil
@@ -95,13 +111,13 @@ func ComputeRemoteStatus(status *RepoStatus, repoPath string) {
 
 	for _, remoteName := range remoteNames {
 		ri := RemoteInfo{Name: remoteName}
-		url, _ := git.RemoteURL(repoPath, remoteName)
+		url, _ := git.RemoteURL(repo, remoteName)
 		ri.URL = url
 
-		fetchErr := git.FetchRemote(repoPath, remoteName)
+		fetchErr := git.FetchRemote(repo, remoteName)
 		if fetchErr == nil {
 			remoteAccessible = true
-			ahead, behind, abErr := git.AheadBehind(repoPath, status.CurrentBranch, remoteName)
+			ahead, behind, abErr := git.AheadBehind(repo, status.CurrentBranch, remoteName)
 			if abErr == nil {
 				ri.Ahead = ahead
 				ri.Behind = behind

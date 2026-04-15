@@ -15,15 +15,13 @@
       @click="router.push({ name: item.route })"
     />
 
-    <!-- Separator -->
-    <div class="w-6 border-t my-1" :style="{ borderColor: 'var(--color-border)' }" />
+    <div class="flex-1" />
 
-    <!-- Add repo button -->
     <SidebarIcon
-      icon="pi pi-plus"
-      label="Add Repository"
-      :active="false"
-      @click="$emit('add-repo')"
+      icon="pi pi-cog"
+      label="Settings"
+      :active="route.name === 'settings'"
+      @click="router.push({ name: 'settings' })"
     />
   </nav>
 </template>
@@ -35,11 +33,8 @@ import SidebarIcon from './SidebarIcon.vue'
 const router = useRouter()
 const route = useRoute()
 
-defineEmits<{ 'add-repo': [] }>()
-
 const navItems = [
   { route: 'dashboard', icon: 'pi pi-objects-column', label: 'Dashboard' },
   { route: 'tags', icon: 'pi pi-tags', label: 'Tags' },
-  { route: 'settings', icon: 'pi pi-cog', label: 'Settings' },
 ]
 </script>

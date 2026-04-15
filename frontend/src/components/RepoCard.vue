@@ -10,7 +10,7 @@
   >
     <!-- Shine overlay while checking -->
     <div
-      v-if="checking"
+      v-if="repoStore.checkingIds.has(props.repo.ID)"
       class="absolute inset-0 pointer-events-none card-shine rounded-lg"
     />
 
@@ -48,7 +48,7 @@
           class="p-1.5 rounded cursor-pointer hover:opacity-80"
           :style="{ color: 'var(--color-text-secondary)' }"
           @click="showRemoveConfirm = true"
-          title="Remove repository"
+          v-tooltip.bottom="'Remove repository'"
         >
           <Icon icon="codicon:trash" width="14" height="14" />
         </button>
@@ -56,7 +56,7 @@
           class="p-1.5 rounded cursor-pointer hover:opacity-80"
           :style="{ color: 'var(--color-text-secondary)' }"
           @click="$emit('refresh')"
-          title="Refresh"
+          v-tooltip.bottom="'Refresh'"
         >
           <Icon
             icon="codicon:refresh"
@@ -114,14 +114,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import StatusBadge from './StatusBadge.vue'
 import TagDropdown from './TagDropdown.vue'
 import ConfirmDialog from './ConfirmDialog.vue'
-import type { Repository, RepoStatus } from '../stores/repoStore'
+import { useRepoStore, type Repository, type RepoStatus } from '../stores/repoStore'
 import { useTimeAgo } from '@vueuse/core'
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
+
+const repoStore = useRepoStore()
 
 const props = defineProps<{
   repo: Repository
@@ -133,21 +134,6 @@ const props = defineProps<{
 const emit = defineEmits<{ refresh: []; remove: []; 'toggle-select': [] }>()
 
 const showRemoveConfirm = ref(false)
-const checking = ref(false)
-
-onMounted(() => {
-  EventsOn('repo:checking', (id: number) => {
-    if (id === props.repo.ID) checking.value = true
-  })
-  EventsOn('repo:checked', (id: number) => {
-    if (id === props.repo.ID) checking.value = false
-  })
-})
-
-onUnmounted(() => {
-  EventsOff('repo:checking')
-  EventsOff('repo:checked')
-})
 
 const tagIds = computed(() => props.repo.tags?.map(t => t.ID) ?? [])
 
@@ -169,8 +155,11 @@ const borderColor = computed(() => {
   return 'var(--color-success)'
 })
 
-const lastCheckedText = computed(() => {
-  if (!props.status?.lastChecked) return 'Waiting for check...'
-  return useTimeAgo(new Date(props.status.lastChecked)).value
-})
+const lastCheckedDate = computed(() =>
+  props.status?.lastChecked ? new Date(props.status.lastChecked) : undefined,
+)
+const timeAgo = useTimeAgo(lastCheckedDate as any)
+const lastCheckedText = computed(() =>
+  lastCheckedDate.value ? timeAgo.value : 'Waiting for check...',
+)
 </script>

@@ -4,6 +4,18 @@
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-xl font-bold">Dashboard</h1>
       <div class="flex items-center gap-2">
+        <!-- Add Repository -->
+        <button
+          class="w-7 h-7 rounded-md text-xs cursor-pointer transition-colors border flex items-center justify-center"
+          :style="{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-secondary)',
+          }"
+          @click="$emit('add-repo')"
+          v-tooltip.bottom="'Add Repository'"
+        >
+          <Icon icon="codicon:repo-clone" width="14" height="14" />
+        </button>
         <!-- Search -->
         <div class="relative">
           <Icon
@@ -28,23 +40,12 @@
             class="absolute right-1.5 top-1/2 -translate-y-1/2 cursor-pointer rounded-sm hover:opacity-80"
             :style="{ color: 'var(--color-text-secondary)' }"
             @click="searchQuery = ''"
-            title="Clear search"
+            v-tooltip.bottom="'Clear search'"
           >
             <Icon icon="codicon:close" width="14" height="14" />
           </button>
         </div>
-        <button
-          class="w-7 h-7 rounded-md text-xs cursor-pointer transition-colors border flex items-center justify-center"
-          :style="{
-            borderColor: selectMode ? 'var(--color-primary)' : 'var(--color-border)',
-            color: selectMode ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-            backgroundColor: selectMode ? 'var(--color-primary)' + '20' : 'transparent',
-          }"
-          @click="toggleSelectMode"
-          title="Select repos"
-        >
-          <Icon icon="codicon:checklist" width="14" height="14" />
-        </button>
+        <!-- Refresh All -->
         <button
           class="w-7 h-7 rounded-md text-xs cursor-pointer transition-colors border flex items-center justify-center"
           :style="{
@@ -52,7 +53,7 @@
             color: 'var(--color-text-secondary)',
           }"
           @click="refreshAll"
-          title="Refresh All"
+          v-tooltip.bottom="'Refresh All'"
         >
           <Icon
             icon="codicon:refresh"
@@ -61,7 +62,21 @@
             :class="{ 'refresh-spinning': refreshingAll }"
           />
         </button>
-        <ViewToggle v-model="viewMode" @update:model-value="onViewModeChange" />
+        <!-- Select Mode -->
+        <button
+          class="w-7 h-7 rounded-md text-xs cursor-pointer transition-colors border flex items-center justify-center"
+          :style="{
+            borderColor: selectMode ? 'var(--color-primary)' : 'var(--color-border)',
+            color: selectMode ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+            backgroundColor: selectMode ? 'var(--color-primary)' + '20' : 'transparent',
+          }"
+          @click="toggleSelectMode"
+          v-tooltip.bottom="'Select repos'"
+        >
+          <Icon icon="codicon:checklist" width="14" height="14" />
+        </button>
+        <!-- View Toggle -->
+        <ViewToggle v-model="viewMode" />
       </div>
     </div>
 
@@ -180,6 +195,7 @@
           :selectable="selectMode"
           :selected="repoStore.selectedIds.has(repo.ID)"
           @refresh="repoStore.refreshRepo(repo.ID)"
+          @remove="repoStore.removeRepo(repo.ID)"
           @toggle-select="repoStore.toggleSelect(repo.ID)"
         />
       </TransitionGroup>
@@ -200,7 +216,11 @@
           <RepoListItem
             :repo="repo"
             :status="repoStore.statuses[repo.ID]"
+            :selectable="selectMode"
+            :selected="repoStore.selectedIds.has(repo.ID)"
             @refresh="repoStore.refreshRepo(repo.ID)"
+            @remove="repoStore.removeRepo(repo.ID)"
+            @toggle-select="repoStore.toggleSelect(repo.ID)"
           />
         </template>
       </draggable>
@@ -215,7 +235,11 @@
           :key="repo.ID"
           :repo="repo"
           :status="repoStore.statuses[repo.ID]"
+          :selectable="selectMode"
+          :selected="repoStore.selectedIds.has(repo.ID)"
           @refresh="repoStore.refreshRepo(repo.ID)"
+          @remove="repoStore.removeRepo(repo.ID)"
+          @toggle-select="repoStore.toggleSelect(repo.ID)"
         />
       </TransitionGroup>
     </template>
@@ -241,7 +265,10 @@ const repoStore = useRepoStore()
 const tagStore = useTagStore()
 const settingsStore = useSettingsStore()
 
-const viewMode = ref<'grid' | 'list'>(settingsStore.settings.viewMode as 'grid' | 'list')
+const viewMode = computed<'grid' | 'list'>({
+  get: () => settingsStore.settings.viewMode as 'grid' | 'list',
+  set: (mode) => settingsStore.updateSettings({ viewMode: mode }),
+})
 const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 250)
 const selectedTagIds = ref<number[]>([])
@@ -255,10 +282,13 @@ function toggleSelectMode() {
   }
 }
 
-function refreshAll() {
+async function refreshAll() {
   refreshingAll.value = true
-  repoStore.refreshAll()
-  setTimeout(() => { refreshingAll.value = false }, 600)
+  try {
+    await repoStore.refreshAll()
+  } finally {
+    refreshingAll.value = false
+  }
 }
 
 function onDragEnd() {
@@ -299,7 +329,4 @@ function toggleTagFilter(tagId: number) {
   }
 }
 
-function onViewModeChange(mode: 'grid' | 'list') {
-  settingsStore.updateSettings({ viewMode: mode })
-}
 </script>

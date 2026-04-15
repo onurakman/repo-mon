@@ -3,7 +3,7 @@ import { useIntervalFn } from '@vueuse/core'
 import { useRepoStore } from '../stores/repoStore'
 import { useSettingsStore } from '../stores/settingsStore'
 
-export function usePolling(intervalMs: number = 5000) {
+export function usePolling(intervalMs: number = 5000, startImmediately = true) {
   const repoStore = useRepoStore()
   const settingsStore = useSettingsStore()
 
@@ -12,17 +12,17 @@ export function usePolling(intervalMs: number = 5000) {
       await repoStore.fetchStatuses()
     },
     intervalMs,
-    { immediate: true },
+    { immediate: startImmediately },
   )
 
-  // React to polling toggle
+  // React to polling toggle (not immediate — App.vue controls initial start)
   watch(() => settingsStore.settings.pollingEnabled, (enabled) => {
     if (enabled) {
       resume()
     } else {
       pause()
     }
-  }, { immediate: true })
+  })
 
   return { pause, resume, isActive }
 }

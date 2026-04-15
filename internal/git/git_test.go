@@ -49,7 +49,11 @@ func TestIsGitRepo(t *testing.T) {
 }
 
 func TestCurrentBranch(t *testing.T) {
-	repo := setupTestRepo(t)
+	repoPath := setupTestRepo(t)
+	repo, err := OpenRepo(repoPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	branch, err := CurrentBranch(repo)
 	if err != nil {
 		t.Fatal(err)
@@ -59,19 +63,24 @@ func TestCurrentBranch(t *testing.T) {
 	}
 }
 
-func TestStatusCounts(t *testing.T) {
-	repo := setupTestRepo(t)
-
-	mod, staged, untracked, err := StatusCounts(repo)
+func TestWorktreeStatus(t *testing.T) {
+	repoPath := setupTestRepo(t)
+	repo, err := OpenRepo(repoPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if mod != 0 || staged != 0 || untracked != 0 {
-		t.Errorf("expected clean, got mod=%d staged=%d untracked=%d", mod, staged, untracked)
+
+	mod, staged, untracked, conflicts, err := WorktreeStatus(repo, repoPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mod != 0 || staged != 0 || untracked != 0 || conflicts {
+		t.Errorf("expected clean, got mod=%d staged=%d untracked=%d conflicts=%v", mod, staged, untracked, conflicts)
 	}
 
-	os.WriteFile(filepath.Join(repo, "new.txt"), []byte("new"), 0644)
-	mod, staged, untracked, err = StatusCounts(repo)
+	os.WriteFile(filepath.Join(repoPath, "new.txt"), []byte("new"), 0644)
+	repo, _ = OpenRepo(repoPath)
+	mod, staged, untracked, conflicts, err = WorktreeStatus(repo, repoPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,10 +88,11 @@ func TestStatusCounts(t *testing.T) {
 		t.Errorf("expected 1 untracked, got %d", untracked)
 	}
 
-	r, _ := gogit.PlainOpen(repo)
+	r, _ := gogit.PlainOpen(repoPath)
 	wt, _ := r.Worktree()
 	wt.Add("new.txt")
-	mod, staged, untracked, err = StatusCounts(repo)
+	repo, _ = OpenRepo(repoPath)
+	mod, staged, untracked, conflicts, err = WorktreeStatus(repo, repoPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,9 +112,13 @@ func TestStashCount(t *testing.T) {
 	}
 }
 
-func TestHasConflicts(t *testing.T) {
-	repo := setupTestRepo(t)
-	conflicts, err := HasConflicts(repo)
+func TestWorktreeStatusNoConflicts(t *testing.T) {
+	repoPath := setupTestRepo(t)
+	repo, err := OpenRepo(repoPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, conflicts, err := WorktreeStatus(repo, repoPath)
 	if err != nil {
 		t.Fatal(err)
 	}

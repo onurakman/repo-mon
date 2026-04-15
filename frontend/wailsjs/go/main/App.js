@@ -70,6 +70,10 @@ export function SetGlobalPollInterval(arg1) {
   return window['go']['main']['App']['SetGlobalPollInterval'](arg1);
 }
 
+export function SetPollingEnabled(arg1) {
+  return window['go']['main']['App']['SetPollingEnabled'](arg1);
+}
+
 export function UnassignTag(arg1, arg2) {
   return window['go']['main']['App']['UnassignTag'](arg1, arg2);
 }

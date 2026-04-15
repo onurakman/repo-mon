@@ -48,7 +48,7 @@
           class="p-1 rounded cursor-pointer hover:opacity-80"
           :style="{ color: 'var(--color-danger)' }"
           @click="tagToDelete = tag; showDeleteConfirm = true"
-          title="Delete tag"
+          v-tooltip.left="'Delete tag'"
         >
           <i class="pi pi-trash text-sm" />
         </button>

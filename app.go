@@ -202,8 +202,13 @@ func (a *App) UpdatePollInterval(id uint, seconds int) error {
 }
 
 func (a *App) SetGlobalPollInterval(seconds int) error {
-	// Only update repo intervals and restart schedulers
-	// Settings save is handled by frontend via UpdateSettings
+	// Persist to settings DB
+	if settings, err := service.GetSettings(); err == nil {
+		settings.GlobalPollInterval = seconds
+		_ = service.UpdateSettings(*settings)
+	}
+
+	// Update all repo intervals and restart schedulers
 	repos, err := service.GetRepositories()
 	if err != nil {
 		return err
@@ -213,6 +218,10 @@ func (a *App) SetGlobalPollInterval(seconds int) error {
 		a.scheduler.UpdateInterval(repo.ID, repo.Path, seconds)
 	}
 	return nil
+}
+
+func (a *App) SetPollingEnabled(enabled bool) {
+	a.scheduler.SetPaused(!enabled)
 }
 
 // --- Tags ---

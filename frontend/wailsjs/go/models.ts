@@ -105,9 +105,6 @@ export namespace models {
 	    UpdatedAt: any;
 	    // Go type: gorm
 	    DeletedAt: any;
-	    theme: string;
-	    darkMode: boolean;
-	    viewMode: string;
 	    globalPollInterval: number;
 	    windowWidth: number;
 	    windowHeight: number;
@@ -125,9 +122,6 @@ export namespace models {
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
 	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
-	        this.theme = source["theme"];
-	        this.darkMode = source["darkMode"];
-	        this.viewMode = source["viewMode"];
 	        this.globalPollInterval = source["globalPollInterval"];
 	        this.windowWidth = source["windowWidth"];
 	        this.windowHeight = source["windowHeight"];

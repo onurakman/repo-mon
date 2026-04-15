@@ -24,6 +24,17 @@ export const useRepoStore = defineStore('repo', () => {
   const statuses = ref<Record<number, RepoStatus>>({})
   const loading = ref(false)
   const selectedIds = ref<Set<number>>(new Set())
+  const checkingIds = ref<Set<number>>(new Set())
+
+  function setChecking(id: number) {
+    checkingIds.value = new Set([...checkingIds.value, id])
+  }
+
+  function clearChecking(id: number) {
+    const next = new Set(checkingIds.value)
+    next.delete(id)
+    checkingIds.value = next
+  }
 
   async function fetchRepositories() {
     try {
@@ -49,8 +60,6 @@ export const useRepoStore = defineStore('repo', () => {
     try {
       await AddRepository(path)
       await fetchRepositories()
-    } catch (e) {
-      throw e
     } finally {
       loading.value = false
     }
@@ -64,12 +73,10 @@ export const useRepoStore = defineStore('repo', () => {
 
   async function refreshRepo(id: number) {
     await RefreshRepository(id)
-    await fetchStatuses()
   }
 
   async function refreshAll() {
     await RefreshAll()
-    await fetchStatuses()
   }
 
   async function updateInterval(id: number, seconds: number) {
@@ -98,11 +105,13 @@ export const useRepoStore = defineStore('repo', () => {
   }
 
   function toggleSelect(id: number) {
-    if (selectedIds.value.has(id)) {
-      selectedIds.value.delete(id)
+    const next = new Set(selectedIds.value)
+    if (next.has(id)) {
+      next.delete(id)
     } else {
-      selectedIds.value.add(id)
+      next.add(id)
     }
+    selectedIds.value = next
   }
 
   function clearSelection() {
@@ -118,6 +127,9 @@ export const useRepoStore = defineStore('repo', () => {
     statuses,
     loading,
     selectedIds,
+    checkingIds,
+    setChecking,
+    clearChecking,
     fetchRepositories,
     fetchStatuses,
     addRepo,

@@ -22,6 +22,7 @@ make test           # Run Go tests
 
 ## Key Constraints
 
+- **UI language is English:** All user-facing text (labels, messages, dialogs) must be in English
 - **webkit2_41 build tag required:** Always pass `-tags webkit2_41` to wails commands (Makefile handles this)
 - **CWD must be project root** when running `wails build` or `wails dev`
 - **frontend/.npmrc** has `legacy-peer-deps=true` — needed for dependency resolution

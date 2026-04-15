@@ -4,7 +4,7 @@
       class="p-1.5 rounded cursor-pointer hover:opacity-80"
       :style="{ color: 'var(--color-text-secondary)' }"
       @click.stop="open = !open"
-      title="Manage tags"
+      v-tooltip.bottom="'Manage tags'"
     >
       <Icon icon="codicon:tag" width="14" height="14" />
     </button>

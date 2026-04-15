@@ -19,8 +19,13 @@ type repoTicker struct {
 
 type Scheduler struct {
 	mu           sync.Mutex
+	emitterMu    sync.RWMutex
+	pauseMu      sync.RWMutex
+	paused       bool
+	wg           sync.WaitGroup
 	tickers      map[uint]*repoTicker
 	statuses     sync.Map
+	checking     sync.Map // per-repo guard to prevent overlapping checks
 	statusSaver  StatusSaver
 	eventEmitter EventEmitter
 }
@@ -56,42 +61,59 @@ func (s *Scheduler) persistStatus(repoID uint, status *RepoStatus) {
 	s.statusSaver(repoID, string(data))
 }
 
-// checkRepo runs local status immediately, stores it, then runs remote in background.
 func (s *Scheduler) SetEventEmitter(emitter EventEmitter) {
+	s.emitterMu.Lock()
+	defer s.emitterMu.Unlock()
 	s.eventEmitter = emitter
 }
 
 func (s *Scheduler) emitEvent(event string, repoID uint) {
-	if s.eventEmitter != nil {
-		s.eventEmitter(event, repoID)
+	s.emitterMu.RLock()
+	emitter := s.eventEmitter
+	s.emitterMu.RUnlock()
+	if emitter != nil {
+		emitter(event, repoID)
 	}
 }
 
 func (s *Scheduler) checkRepo(repoID uint, repoPath string) {
+	// Skip if a check is already running for this repo
+	if _, running := s.checking.LoadOrStore(repoID, true); running {
+		return
+	}
+
 	prev := s.GetStatus(repoID)
 	status := ComputeLocalStatus(repoID, repoPath, prev)
-	s.statuses.Store(repoID, status)
-	s.persistStatus(repoID, status)
+
+	// Store a snapshot copy so readers never see in-flight mutations
+	localCopy := *status
+	s.statuses.Store(repoID, &localCopy)
+	s.persistStatus(repoID, &localCopy)
 
 	// If local check already failed or no remotes, skip remote and emit done
 	if !status.CheckingRemote {
+		s.checking.Delete(repoID)
 		s.emitEvent("repo:checked", repoID)
 		return
 	}
 
 	s.emitEvent("repo:checking", repoID)
 
-	// Remote check in background
+	// Remote check in background on an independent copy
+	s.wg.Add(1)
 	go func() {
-		ComputeRemoteStatus(status, repoPath)
-		s.statuses.Store(repoID, status)
-		s.persistStatus(repoID, status)
+		defer s.wg.Done()
+		defer s.checking.Delete(repoID)
+		remoteStatus := *status
+		ComputeRemoteStatus(&remoteStatus, repoPath)
+		s.statuses.Store(repoID, &remoteStatus)
+		s.persistStatus(repoID, &remoteStatus)
 		s.emitEvent("repo:checked", repoID)
 	}()
 }
 
 func (s *Scheduler) Start(repoID uint, repoPath string, intervalSec int) {
-	s.Stop(repoID)
+	s.stopTicker(repoID)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -110,12 +132,17 @@ func (s *Scheduler) Start(repoID uint, repoPath string, intervalSec int) {
 	// Initial check
 	go s.checkRepo(repoID, repoPath)
 
-	// Polling loop
+	// Polling loop — respects pause; manual Refresh bypasses this
 	go func() {
 		for {
 			select {
 			case <-rt.ticker.C:
-				s.checkRepo(repoID, repoPath)
+				s.pauseMu.RLock()
+				paused := s.paused
+				s.pauseMu.RUnlock()
+				if !paused {
+					s.checkRepo(repoID, repoPath)
+				}
 			case <-rt.stop:
 				rt.ticker.Stop()
 				return
@@ -124,7 +151,8 @@ func (s *Scheduler) Start(repoID uint, repoPath string, intervalSec int) {
 	}()
 }
 
-func (s *Scheduler) Stop(repoID uint) {
+// stopTicker stops the polling ticker for a repo without clearing its cached status.
+func (s *Scheduler) stopTicker(repoID uint) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -132,17 +160,30 @@ func (s *Scheduler) Stop(repoID uint) {
 		close(rt.stop)
 		delete(s.tickers, repoID)
 	}
+}
+
+// Stop stops monitoring and removes all cached state for a repo.
+func (s *Scheduler) Stop(repoID uint) {
+	s.stopTicker(repoID)
 	s.statuses.Delete(repoID)
 }
 
 func (s *Scheduler) StopAll() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	for id, rt := range s.tickers {
 		close(rt.stop)
 		delete(s.tickers, id)
 	}
+	s.mu.Unlock()
+
+	// Wait for in-flight remote checks to finish
+	s.wg.Wait()
+}
+
+func (s *Scheduler) SetPaused(paused bool) {
+	s.pauseMu.Lock()
+	defer s.pauseMu.Unlock()
+	s.paused = paused
 }
 
 func (s *Scheduler) UpdateInterval(repoID uint, repoPath string, intervalSec int) {
@@ -150,7 +191,7 @@ func (s *Scheduler) UpdateInterval(repoID uint, repoPath string, intervalSec int
 }
 
 func (s *Scheduler) Refresh(repoID uint, repoPath string) {
-	s.checkRepo(repoID, repoPath)
+	go s.checkRepo(repoID, repoPath)
 }
 
 func (s *Scheduler) GetStatus(repoID uint) *RepoStatus {
@@ -158,13 +199,25 @@ func (s *Scheduler) GetStatus(repoID uint) *RepoStatus {
 	if !ok {
 		return nil
 	}
-	return val.(*RepoStatus)
+	orig := val.(*RepoStatus)
+	cp := *orig
+	if orig.Remotes != nil {
+		cp.Remotes = make([]RemoteInfo, len(orig.Remotes))
+		copy(cp.Remotes, orig.Remotes)
+	}
+	return &cp
 }
 
 func (s *Scheduler) GetAllStatuses() map[uint]*RepoStatus {
 	result := make(map[uint]*RepoStatus)
 	s.statuses.Range(func(key, value any) bool {
-		result[key.(uint)] = value.(*RepoStatus)
+		orig := value.(*RepoStatus)
+		cp := *orig
+		if orig.Remotes != nil {
+			cp.Remotes = make([]RemoteInfo, len(orig.Remotes))
+			copy(cp.Remotes, orig.Remotes)
+		}
+		result[key.(uint)] = &cp
 		return true
 	})
 	return result

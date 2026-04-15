@@ -28,9 +28,6 @@ func Initialize(dbPath string) error {
 	DB.Model(&models.UserSettings{}).Count(&count)
 	if count == 0 {
 		DB.Create(&models.UserSettings{
-			Theme:              "neutral-carbon",
-			DarkMode:           true,
-			ViewMode:           "grid",
 			GlobalPollInterval: 30,
 		})
 	}

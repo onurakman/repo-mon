@@ -5,7 +5,7 @@
       backgroundColor: active ? 'var(--color-primary)' : 'transparent',
       color: active ? '#fff' : 'var(--color-text-secondary)',
     }"
-    :title="label"
+    v-tooltip.right="label"
   >
     <i :class="icon" class="text-lg" />
   </button>

@@ -44,12 +44,14 @@ func GetRepositories() ([]models.Repository, error) {
 }
 
 func UpdateSortOrder(ids []uint) error {
+	tx := database.DB.Begin()
 	for i, id := range ids {
-		if err := database.DB.Model(&models.Repository{}).Where("id = ?", id).Update("sort_order", i).Error; err != nil {
+		if err := tx.Model(&models.Repository{}).Where("id = ?", id).Update("sort_order", i).Error; err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit().Error
 }
 
 func GetRepository(id uint) (*models.Repository, error) {

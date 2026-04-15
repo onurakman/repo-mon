@@ -37,6 +37,8 @@ export function SelectDirectory():Promise<string>;
 
 export function SetGlobalPollInterval(arg1:number):Promise<void>;
 
+export function SetPollingEnabled(arg1:boolean):Promise<void>;
+
 export function UnassignTag(arg1:number,arg2:number):Promise<void>;
 
 export function UpdatePollInterval(arg1:number,arg2:number):Promise<void>;

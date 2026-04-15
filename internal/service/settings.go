@@ -16,9 +16,6 @@ func GetSettings() (*models.UserSettings, error) {
 
 func UpdateSettings(settings models.UserSettings) error {
 	return database.DB.Model(&models.UserSettings{}).Where("id = ?", 1).Updates(map[string]interface{}{
-		"theme":                settings.Theme,
-		"dark_mode":            settings.DarkMode,
-		"view_mode":            settings.ViewMode,
 		"global_poll_interval": settings.GlobalPollInterval,
 		"window_width":         settings.WindowWidth,
 		"window_height":        settings.WindowHeight,

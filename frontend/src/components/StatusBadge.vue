@@ -3,7 +3,7 @@
     class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all duration-200"
     :class="{ 'badge-pulse': type === 'checking' }"
     :style="{ backgroundColor: bgColor, color: '#fff' }"
-    :title="tooltip"
+    v-tooltip.top="tooltip"
   >
     <Icon :icon="iconName" width="14" height="14" />
     <span v-if="displayText">{{ displayText }}</span>
